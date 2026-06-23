@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Node (demo capture) ###
+node_modules/
