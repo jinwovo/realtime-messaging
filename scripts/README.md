@@ -20,6 +20,7 @@ cd scripts
 npm install
 npx playwright install chromium
 node capture-demo.mjs        # writes instance-1.png + instance-2.png to ../docs/demo
+node make-gif.mjs            # writes ../docs/demo/demo.gif (animated demo)
 ```
 
 Two pages (`alice@8080`, `bob@8081`) connect, a sequence of messages is published to instance-1,

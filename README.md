@@ -14,6 +14,10 @@ STOMP-over-WebSocket. The interesting part isn't "push a message to a browser" �
 
 ## Demo
 
+Messages stream into the live console in real time as they are published:
+
+![Realtime messaging demo](docs/demo/demo.gif)
+
 One broadcast published on **instance-1** is delivered to a subscriber on **instance-2** — routed
 through Redis Pub/Sub. A direct message (`→ bob`, the ALERT) reaches only its target on instance-2,
 so the live event counters diverge (**4 vs 5**). Two browser tabs, two separate JVMs, one publish:

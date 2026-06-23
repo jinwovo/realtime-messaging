@@ -5,9 +5,12 @@
   "type": "module",
   "description": "Playwright script that drives the running demo and captures portfolio screenshots.",
   "scripts": {
-    "capture": "node capture-demo.mjs"
+    "capture": "node capture-demo.mjs",
+    "gif": "node make-gif.mjs"
   },
   "dependencies": {
-    "playwright": "^1.61.0"
+    "gifenc": "^1.0.3",
+    "playwright": "^1.61.0",
+    "pngjs": "^7.0.0"
   }
 }
