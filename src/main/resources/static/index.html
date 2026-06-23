@@ -3,63 +3,226 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Realtime Messaging — demo</title>
+  <title>Realtime Messaging — live demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
   <style>
-    :root { color-scheme: light dark; }
-    body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; max-width: 720px;
-           margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
-    h1 { font-size: 1.2rem; }
-    .bar { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin: .5rem 0; }
-    input, button { font: inherit; padding: .4rem .6rem; }
-    input { border: 1px solid #8888; border-radius: 6px; }
-    button { border: 0; border-radius: 6px; background: #2563eb; color: #fff; cursor: pointer; }
-    #status { padding: .2rem .6rem; border-radius: 999px; font-size: .8rem; }
-    .on { background: #16a34a; color: #fff; } .off { background: #6b7280; color: #fff; }
-    #log { list-style: none; padding: 0; margin-top: 1rem; }
-    #log li { border: 1px solid #8884; border-radius: 8px; padding: .5rem .7rem; margin: .4rem 0; }
-    #log .meta { font-size: .75rem; opacity: .65; }
-    .pill { font-size: .75rem; background: #8882; padding: .1rem .5rem; border-radius: 999px; }
+    :root {
+      --primary: #111111; --primary-active: #242424;
+      --ink: #111111; --body: #374151; --muted: #6b7280; --muted-soft: #898989;
+      --hairline: #e5e7eb; --hairline-soft: #f3f4f6;
+      --canvas: #ffffff; --surface-soft: #f8f9fa; --surface-card: #f5f5f5;
+      --dark: #101010; --dark-elevated: #1a1a1a;
+      --on-dark: #ffffff; --on-dark-soft: #a1a1aa;
+      --success: #10b981; --error: #ef4444;
+      --violet: #8b5cf6; --emerald: #34d399; --orange: #fb923c; --pink: #ec4899;
+      --r-sm: 6px; --r-md: 8px; --r-lg: 12px; --r-xl: 16px; --r-pill: 9999px;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.05);
+      --shadow-md: 0 4px 16px rgba(0,0,0,.08);
+      --font-display: 'Space Grotesk', Inter, -apple-system, sans-serif;
+      --font-body: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      font-family: var(--font-body); color: var(--body); background: var(--canvas);
+      -webkit-font-smoothing: antialiased; line-height: 1.5;
+    }
+
+    /* Top bar */
+    .appbar {
+      height: 64px; border-bottom: 1px solid var(--hairline);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px; position: sticky; top: 0; background: rgba(255,255,255,.85);
+      backdrop-filter: saturate(180%) blur(8px); z-index: 10;
+    }
+    .wordmark { display: flex; align-items: center; gap: 10px; font-family: var(--font-display);
+      font-weight: 600; font-size: 17px; letter-spacing: -.4px; color: var(--ink); }
+    .mark { width: 22px; height: 22px; border-radius: 6px; background: var(--primary);
+      display: grid; place-items: center; }
+    .mark::after { content: ''; width: 8px; height: 8px; border-radius: 2px;
+      background: #fff; transform: rotate(45deg); }
+    .instance-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--surface-card); border-radius: var(--r-pill);
+      padding: 6px 14px 6px 10px; font-family: var(--font-mono); font-size: 13px;
+      font-weight: 500; color: var(--ink); border: 1px solid var(--hairline);
+    }
+    .instance-badge .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+
+    /* Layout */
+    .wrap { max-width: 940px; margin: 0 auto; padding: 48px 24px 80px; }
+    .hero h1 { font-family: var(--font-display); font-weight: 600; font-size: 44px;
+      line-height: 1.08; letter-spacing: -1.5px; color: var(--ink); margin: 0 0 14px; }
+    .hero p { font-size: 17px; color: var(--muted); margin: 0; max-width: 560px; }
+    .hint { margin-top: 20px; display: inline-flex; align-items: center; gap: 10px;
+      background: var(--surface-soft); border: 1px solid var(--hairline);
+      border-radius: var(--r-md); padding: 10px 14px; font-size: 13.5px; color: var(--body); }
+    .hint code { font-family: var(--font-mono); font-size: 12.5px; background: var(--surface-card);
+      padding: 2px 6px; border-radius: var(--r-sm); color: var(--ink); }
+
+    /* Cards */
+    .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 32px 0; }
+    .card { background: var(--canvas); border: 1px solid var(--hairline); border-radius: var(--r-lg);
+      padding: 22px; box-shadow: var(--shadow-sm); }
+    .card .label { font-size: 12px; font-weight: 600; letter-spacing: .04em;
+      text-transform: uppercase; color: var(--muted-soft); margin-bottom: 14px; }
+    .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    .field span { font-size: 12.5px; color: var(--muted); font-weight: 500; }
+    input {
+      font-family: var(--font-body); font-size: 15px; color: var(--ink);
+      height: 40px; padding: 0 14px; border: 1px solid var(--hairline);
+      border-radius: var(--r-md); background: var(--canvas); width: 100%; transition: border-color .12s;
+    }
+    input:focus { outline: none; border-color: var(--ink); }
+    .row { display: flex; gap: 10px; align-items: center; }
+    button {
+      font-family: var(--font-body); font-size: 14px; font-weight: 600; cursor: pointer;
+      height: 40px; padding: 0 20px; border: 0; border-radius: var(--r-md);
+      background: var(--primary); color: #fff; transition: background .12s, opacity .12s; white-space: nowrap;
+    }
+    button:hover { background: var(--primary-active); }
+    button:active { transform: translateY(.5px); }
+    button:disabled { background: var(--hairline); color: var(--muted); cursor: not-allowed; }
+    button.ghost { background: var(--canvas); color: var(--ink); border: 1px solid var(--hairline); }
+    button.ghost:hover { background: var(--surface-soft); }
+
+    .status { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px;
+      font-weight: 500; color: var(--muted); }
+    .status .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted-soft); }
+    .status.live { color: var(--ink); }
+    .status.live .dot { background: var(--success); box-shadow: 0 0 0 4px rgba(16,185,129,.15); }
+    .avatar { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+      font-size: 12px; font-weight: 600; color: #fff; font-family: var(--font-body); }
+
+    /* Dark live console */
+    .console { background: var(--dark); border-radius: var(--r-xl); overflow: hidden;
+      box-shadow: var(--shadow-md); }
+    .console-head { display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,.07); }
+    .console-head .t { display: flex; align-items: center; gap: 10px; color: var(--on-dark);
+      font-family: var(--font-display); font-weight: 600; font-size: 15px; letter-spacing: -.2px; }
+    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #3f3f46; }
+    .live-dot.on { background: var(--success); animation: pulse 1.6s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+    .counter { font-family: var(--font-mono); font-size: 12.5px; color: var(--on-dark-soft); }
+    .stream { max-height: 380px; min-height: 200px; overflow-y: auto; }
+    .empty { padding: 64px 20px; text-align: center; color: #52525b;
+      font-family: var(--font-mono); font-size: 13px; }
+    .msg { padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,.06);
+      animation: slidein .18s ease-out; }
+    @keyframes slidein { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
+    .msg-top { display: flex; align-items: center; gap: 10px; }
+    .type { font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: .03em;
+      text-transform: uppercase; color: var(--on-dark-soft); background: var(--dark-elevated);
+      padding: 3px 9px; border-radius: var(--r-pill); }
+    .type.direct { color: #0a0a0a; background: var(--emerald); }
+    .msg .text { color: var(--on-dark); font-size: 14.5px; }
+    .msg .meta { margin-top: 5px; font-family: var(--font-mono); font-size: 11.5px; color: #71717a;
+      display: flex; gap: 8px; flex-wrap: wrap; padding-left: 2px; }
+    .msg .meta .to { color: var(--emerald); }
+
+    @media (max-width: 720px) {
+      .controls { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 34px; }
+      .wrap { padding: 32px 18px 64px; }
+    }
   </style>
 </head>
 <body>
-  <h1>📡 Realtime Messaging <span class="pill" id="instance">instance: …</span></h1>
-  <p>Open this page on two ports (e.g. <code>:8080</code> and <code>:8081</code>) and publish a
-     broadcast — both tabs receive it through Redis, proving cross-instance routing.</p>
+  <header class="appbar">
+    <div class="wordmark"><span class="mark"></span> Realtime Messaging</div>
+    <div class="instance-badge"><span class="dot" id="inst-dot"></span><span id="inst-name">connecting…</span></div>
+  </header>
 
-  <div class="bar">
-    <label>user <input id="user" value="alice" size="10" /></label>
-    <button id="connect">Connect</button>
-    <span id="status" class="off">disconnected</span>
-  </div>
+  <main class="wrap">
+    <section class="hero">
+      <h1>Cross-instance delivery,<br />proven live.</h1>
+      <p>A message published on one server reaches a subscriber on another — routed through Redis Pub/Sub. Not a single-server toy.</p>
+      <div class="hint">Open <code>:8080</code> and <code>:8081</code> side by side, connect both, then publish a broadcast.</div>
+    </section>
 
-  <div class="bar">
-    <input id="target" placeholder="target user (blank = broadcast)" size="22" />
-    <input id="content" placeholder="message…" size="22" />
-    <button id="send">Publish</button>
-  </div>
+    <section class="controls">
+      <div class="card">
+        <div class="label">Connection</div>
+        <div class="field"><span>Your user id</span><input id="user" value="alice" autocomplete="off" /></div>
+        <div class="row" style="justify-content: space-between; margin-top: 4px;">
+          <div class="row">
+            <div class="avatar" id="avatar" style="display:none"></div>
+            <span class="status" id="status"><span class="dot"></span> disconnected</span>
+          </div>
+          <button id="connect">Connect</button>
+        </div>
+      </div>
 
-  <ul id="log"></ul>
+      <div class="card">
+        <div class="label">Publish</div>
+        <div class="field"><span>Target user — leave blank to broadcast</span><input id="target" placeholder="broadcast to everyone" autocomplete="off" /></div>
+        <div class="field"><span>Message</span><input id="content" placeholder="Type something…" autocomplete="off" /></div>
+        <div class="row" style="justify-content: flex-end;">
+          <button id="send" disabled>Publish</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="console">
+      <div class="console-head">
+        <div class="t"><span class="live-dot" id="live-dot"></span> Live stream</div>
+        <div class="counter"><span id="count">0</span> events received</div>
+      </div>
+      <div class="stream" id="stream">
+        <div class="empty" id="empty">// waiting for messages — connect and publish</div>
+      </div>
+    </section>
+  </main>
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const log = (text, meta) => {
-      const li = document.createElement('li');
-      li.innerHTML = `<div>${text}</div><div class="meta">${meta}</div>`;
-      $('log').prepend(li);
-    };
+    const PASTELS = ['#8b5cf6', '#34d399', '#fb923c', '#ec4899'];
+    const pick = (s) => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return PASTELS[h % PASTELS.length]; };
+    const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-    fetch('/api/instance').then(r => r.json())
-      .then(d => $('instance').textContent = 'instance: ' + d.instanceId)
-      .catch(() => $('instance').textContent = 'instance: ?');
+    let client = null, count = 0;
 
-    let client = null;
+    fetch('/api/instance').then((r) => r.json()).then((d) => {
+      $('inst-name').textContent = d.instanceId;
+      $('inst-dot').style.background = pick(d.instanceId);
+    }).catch(() => { $('inst-name').textContent = 'unknown'; });
 
-    const onMessage = (frame) => {
-      const n = JSON.parse(frame.body);
-      const tag = n.userId ? `direct → ${n.userId}` : 'broadcast';
-      log(`<b>[${n.type}]</b> ${n.content}`, `${tag} · ${n.id.slice(0, 8)} · ${n.createdAt}`);
-    };
+    function setConnected(on, user) {
+      const s = $('status');
+      s.className = 'status' + (on ? ' live' : '');
+      s.innerHTML = `<span class="dot"></span> ${on ? 'connected as ' + esc(user) : 'disconnected'}`;
+      $('connect').textContent = on ? 'Disconnect' : 'Connect';
+      $('send').disabled = !on;
+      $('live-dot').className = 'live-dot' + (on ? ' on' : '');
+      const av = $('avatar');
+      if (on) { av.style.display = 'grid'; av.style.background = pick(user); av.textContent = user.slice(0, 1).toUpperCase(); }
+      else { av.style.display = 'none'; }
+    }
+
+    function render(n) {
+      if ($('empty')) $('empty').remove();
+      count++; $('count').textContent = count;
+      const direct = n.userId && n.userId.length;
+      const time = new Date(n.createdAt).toLocaleTimeString();
+      const el = document.createElement('div');
+      el.className = 'msg';
+      el.innerHTML =
+        `<div class="msg-top">
+           <span class="type ${direct ? 'direct' : ''}">${esc(n.type || 'MSG')}</span>
+           <span class="text">${esc(n.content)}</span>
+         </div>
+         <div class="meta">
+           ${direct ? `<span class="to">→ ${esc(n.userId)}</span>` : '<span>broadcast</span>'}
+           <span>·</span><span>${esc(n.id.slice(0, 8))}</span>
+           <span>·</span><span>${time}</span>
+         </div>`;
+      $('stream').prepend(el);
+    }
 
     $('connect').onclick = () => {
       if (client && client.active) { client.deactivate(); return; }
@@ -68,34 +231,27 @@
         brokerURL: `ws://${location.host}/ws?user=${encodeURIComponent(user)}`,
         reconnectDelay: 3000,
         onConnect: () => {
-          $('status').textContent = 'connected as ' + user;
-          $('status').className = 'on';
-          $('connect').textContent = 'Disconnect';
-          client.subscribe('/topic/notifications', onMessage);
-          client.subscribe('/user/queue/notifications', onMessage);
+          setConnected(true, user);
+          client.subscribe('/topic/notifications', (f) => render(JSON.parse(f.body)));
+          client.subscribe('/user/queue/notifications', (f) => render(JSON.parse(f.body)));
         },
-        onWebSocketClose: () => {
-          $('status').textContent = 'disconnected';
-          $('status').className = 'off';
-          $('connect').textContent = 'Connect';
-        },
+        onWebSocketClose: () => setConnected(false),
       });
       client.activate();
     };
 
     $('send').onclick = async () => {
-      const body = {
-        userId: $('target').value.trim() || null,
-        type: 'DEMO',
-        content: $('content').value.trim() || '(empty)',
-      };
+      const content = $('content').value.trim();
+      if (!content) return;
       await fetch('/api/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ userId: $('target').value.trim() || null, type: 'DEMO', content }),
       });
       $('content').value = '';
+      $('content').focus();
     };
+    $('content').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('send').click(); });
   </script>
 </body>
 </html>
