@@ -4,9 +4,9 @@ A horizontally-scalable real-time notification/messaging backend built on Spring
 STOMP-over-WebSocket. The interesting part isn't "push a message to a browser" — it's doing that
 **correctly when there is more than one server**.
 
-> **Status:** active build. Milestone 1 (cross-instance routing) is implemented and demoable.
-> Milestones 2–4 are designed and tracked below. This README is intentionally honest about what
-> runs today vs. what is roadmap.
+> **Status:** active build. Milestones 1–2 (cross-instance routing + durable offline delivery) are
+> implemented and verified end-to-end; Milestones 3–4 are designed and tracked below. This README is
+> intentionally honest about what runs today vs. what is roadmap.
 
 ![CI](https://github.com/USER/realtime-messaging/actions/workflows/ci.yml/badge.svg)
 
@@ -74,7 +74,7 @@ instance. See [ADR-0002](docs/adr/0002-redis-pubsub-for-scale-out-routing.md).
 |---|---------|----------|--------|
 | 1 | Cross-instance routing | Redis Pub/Sub fan-out + per-instance local delivery | ✅ implemented |
 | 1b | Per-instance presence | Reference-counted `SessionRegistry` via STOMP connect/disconnect events | ✅ implemented |
-| 2 | Durable delivery (offline inbox, no loss/dupes) | Redis-backed per-user inbox + replay on connect | ⏳ designed — [ADR-0003](docs/adr/0003-delivery-guarantee-roadmap.md) |
+| 2 | Durable delivery (offline inbox) | Cluster-presence gate + Redis inbox + replay on (re)subscribe | ✅ increment 1 — [ADR-0003](docs/adr/0003-delivery-guarantee-roadmap.md) |
 | 3 | Fan-out at scale | k6 soak + throughput suites, p99 / drop-rate thresholds | ⏳ harness scaffolded, numbers pending |
 | 4 | Durable ingestion | Kafka as the replayable event source feeding the fan-out | ⏳ dependency wired, listener pending |
 

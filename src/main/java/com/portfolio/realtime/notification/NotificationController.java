@@ -23,7 +23,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class NotificationController {
 
-    private final NotificationPublisher publisher;
+    private final NotificationService notificationService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.ACCEPTED)
@@ -34,7 +34,7 @@ public class NotificationController {
                 request.type() == null || request.type().isBlank() ? "GENERIC" : request.type(),
                 request.content(),
                 Instant.now());
-        publisher.publish(message);
+        notificationService.send(message);
         return message;
     }
 

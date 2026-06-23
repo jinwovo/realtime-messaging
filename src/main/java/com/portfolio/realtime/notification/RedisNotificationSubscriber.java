@@ -45,7 +45,8 @@ public class RedisNotificationSubscriber implements MessageListener {
         if (sessionRegistry.isConnectedLocally(n.userId())) {
             messagingTemplate.convertAndSendToUser(n.userId(), "/queue/notifications", n);
         }
-        // else: recipient is not on this instance. If they are offline on EVERY instance the
-        // message is currently dropped — durable offline delivery is the next milestone (ADR-0003).
+        // else: recipient is online elsewhere — NotificationService only publishes a direct message
+        // when the user is online somewhere; offline ones are parked in the OfflineInbox upstream
+        // and replayed on reconnect (ADR-0003), so they never reach this path.
     }
 }

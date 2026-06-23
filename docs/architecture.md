@@ -23,6 +23,10 @@
 | `SessionRegistry` | Per-instance presence, reference-counted over STOMP connect/disconnect. |
 | `WebSocketConfig` | STOMP broker + endpoint; pins JSON converter to the app `ObjectMapper`. |
 | `UserHandshakeHandler` | Resolves a `Principal` from `?user=` at handshake. |
+| `NotificationService` | Routes each message: publish live vs. park in the offline inbox. |
+| `ClusterPresence` | Redis-counter presence across all instances; gates live-vs-offline. |
+| `OfflineInbox` | Durable per-user Redis inbox for messages received while offline. |
+| `InboxReplayListener` | Drains & replays the inbox when a user subscribes to their queue. |
 
 ## Message flow
 
@@ -53,9 +57,12 @@ that natively routes user destinations (e.g. RabbitMQ STOMP relay) — is evalua
 
 ## Delivery semantics
 
-- **Today:** at-most-once. If the recipient is connected, they get it; if not, it is dropped.
-- **Target (ADR-0003):** at-least-once with client-side dedup by message id — a durable per-user
-  inbox persists undelivered messages and replays them on reconnect.
+- **Direct, recipient online (any instance):** delivered live via the Redis channel.
+- **Direct, recipient offline everywhere:** parked in a durable Redis inbox and replayed when they
+  next subscribe (Milestone 2) — at-least-once for the offline case.
+- **Broadcast:** delivered to currently-connected subscribers only (not persisted).
+- **Remaining hardening (ADR-0003):** atomic Lua drain + client acks for strict no-duplicate
+  semantics, and presence reaping via heartbeat TTL.
 
 ## Observability
 
