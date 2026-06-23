@@ -4,9 +4,9 @@ A horizontally-scalable real-time notification/messaging backend built on Spring
 STOMP-over-WebSocket. The interesting part isn't "push a message to a browser" — it's doing that
 **correctly when there is more than one server**.
 
-> **Status:** active build. Milestones 1–2 (cross-instance routing + durable offline delivery) are
-> implemented and verified end-to-end; Milestones 3–4 are designed and tracked below. This README is
-> intentionally honest about what runs today vs. what is roadmap.
+> **Status:** active build. Milestones 1–3 (cross-instance routing, durable offline delivery, and
+> load testing) are implemented and measured; Milestone 4 (durable Kafka ingestion) is roadmap. This
+> README is intentionally honest about what runs today vs. what is roadmap.
 
 ![CI](https://github.com/jinwovo/realtime-messaging/actions/workflows/ci.yml/badge.svg)
 
@@ -75,7 +75,7 @@ instance. See [ADR-0002](docs/adr/0002-redis-pubsub-for-scale-out-routing.md).
 | 1 | Cross-instance routing | Redis Pub/Sub fan-out + per-instance local delivery | ✅ implemented |
 | 1b | Per-instance presence | Reference-counted `SessionRegistry` via STOMP connect/disconnect events | ✅ implemented |
 | 2 | Durable delivery (offline inbox) | Cluster-presence gate + Redis inbox + replay on (re)subscribe | ✅ increment 1 — [ADR-0003](docs/adr/0003-delivery-guarantee-roadmap.md) |
-| 3 | Fan-out at scale | k6 soak + throughput suites, p99 / drop-rate thresholds | ⏳ harness scaffolded, numbers pending |
+| 3 | Fan-out at scale | k6 throughput + delivery-latency + soak suites | ✅ measured — p99 delivery **45 ms** @ ~1.7k msg/s (see [Load testing](#load-testing--results)) |
 | 4 | Durable ingestion | Kafka as the replayable event source feeding the fan-out | ⏳ dependency wired, listener pending |
 
 ## Tech stack
@@ -122,12 +122,21 @@ the message travels through Redis. Target a specific `user` to see direct, exact
 exposes `/actuator/prometheus`; Prometheus scrapes both instances. Useful series: active WebSocket
 sessions, publish rate, end-to-end delivery latency.
 
-## Load testing
+## Load testing & results
 
-k6 scenarios live in [`load-test/`](load-test/): `ws-soak.js` holds N concurrent STOMP connections;
-`publish-throughput.js` hammers the ingest endpoint. See [`load-test/README.md`](load-test/README.md).
-Headline numbers will be published here once Milestone 3 lands — with the before/after of each
-optimization, not just a final figure.
+k6 scenarios live in [`load-test/`](load-test/). Measured on a single dev machine (Windows 11, local
+Docker Redis, two app instances on `:8080`/`:8081`) — these are relative figures, not production
+benchmarks. Server and client share a clock, so delivery latency is a true end-to-end measurement.
+
+| Scenario | Script | Result |
+|---|---|---|
+| **Ingest throughput** | [`publish-throughput.js`](load-test/publish-throughput.js) | 1,000 req/s sustained · p95 **4.5 ms** · p99 **13 ms** · 0 errors over ~100k requests |
+| **Delivery latency** — 200 subscribers across both instances, ~1.7k msg/s fan-out | [`delivery-latency.js`](load-test/delivery-latency.js) | end-to-end p95 **33 ms** · p99 **45 ms** · 120k deliveries · 0 errors |
+| **Connection soak** | [`ws-soak.js`](load-test/ws-soak.js) | 1,000 concurrent STOMP connections held · handshake p95 **15 ms** · stable |
+
+**Delivery latency is the headline number** — it spans publish → Redis fan-out → cross-instance
+WebSocket delivery, end to end. Next (Milestone 3 cont.): lift the dev-box ceiling on real hardware
+and capture the before/after of batching the Redis fan-out.
 
 ## Security note
 

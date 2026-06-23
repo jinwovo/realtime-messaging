@@ -5,15 +5,19 @@
 ## Install k6
 
 - macOS: `brew install k6`
-- Windows: `winget install k6 --source winget` (or `choco install k6`)
+- Windows: `choco install k6`, or grab the binary from [k6 releases](https://github.com/grafana/k6/releases)
 - Linux / Docker: see the [k6 install docs](https://grafana.com/docs/k6/latest/set-up/install-k6/)
+
+> The WebSocket scripts use the `k6/experimental/websockets` module (k6 ≥ v0.40; the legacy
+> `k6/ws` was removed in k6 v2).
 
 ## Scenarios
 
-| File | What it measures | SLO (current target) |
-|------|------------------|----------------------|
-| `publish-throughput.js` | Ingest rate the cluster accepts | p95 < 200ms, p99 < 500ms, <1% errors |
-| `ws-soak.js` | Behaviour holding thousands of live STOMP connections | no leaks, stable session count, zero drops |
+| File | What it measures | Latest result (dev machine) |
+|------|------------------|-----------------------------|
+| `publish-throughput.js` | Ingest rate the cluster accepts | 1,000 req/s · p99 13 ms · 0 errors |
+| `delivery-latency.js` | End-to-end publish → fan-out → deliver, across both instances | p95 33 ms · p99 45 ms @ ~1.7k msg/s |
+| `ws-soak.js` | Holding many concurrent STOMP connections | 1,000 connections held, stable |
 
 ## Run
 
@@ -24,6 +28,7 @@ SERVER_PORT=8080 INSTANCE_ID=instance-1 ./gradlew bootRun
 
 # 2. in another shell
 k6 run load-test/publish-throughput.js
+k6 run load-test/delivery-latency.js
 k6 run load-test/ws-soak.js
 
 # point at a different host/port
