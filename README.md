@@ -8,7 +8,7 @@ STOMP-over-WebSocket. The interesting part isn't "push a message to a browser" â
 > implemented and verified end-to-end; Milestones 3â€“4 are designed and tracked below. This README is
 > intentionally honest about what runs today vs. what is roadmap.
 
-![CI](https://github.com/USER/realtime-messaging/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/jinwovo/realtime-messaging/actions/workflows/ci.yml/badge.svg)
 
 ---
 
