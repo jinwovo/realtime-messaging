@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Realtime Messaging — demo</title>
+  <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; max-width: 720px;
+           margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+    h1 { font-size: 1.2rem; }
+    .bar { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin: .5rem 0; }
+    input, button { font: inherit; padding: .4rem .6rem; }
+    input { border: 1px solid #8888; border-radius: 6px; }
+    button { border: 0; border-radius: 6px; background: #2563eb; color: #fff; cursor: pointer; }
+    #status { padding: .2rem .6rem; border-radius: 999px; font-size: .8rem; }
+    .on { background: #16a34a; color: #fff; } .off { background: #6b7280; color: #fff; }
+    #log { list-style: none; padding: 0; margin-top: 1rem; }
+    #log li { border: 1px solid #8884; border-radius: 8px; padding: .5rem .7rem; margin: .4rem 0; }
+    #log .meta { font-size: .75rem; opacity: .65; }
+    .pill { font-size: .75rem; background: #8882; padding: .1rem .5rem; border-radius: 999px; }
+  </style>
+</head>
+<body>
+  <h1>📡 Realtime Messaging <span class="pill" id="instance">instance: …</span></h1>
+  <p>Open this page on two ports (e.g. <code>:8080</code> and <code>:8081</code>) and publish a
+     broadcast — both tabs receive it through Redis, proving cross-instance routing.</p>
+
+  <div class="bar">
+    <label>user <input id="user" value="alice" size="10" /></label>
+    <button id="connect">Connect</button>
+    <span id="status" class="off">disconnected</span>
+  </div>
+
+  <div class="bar">
+    <input id="target" placeholder="target user (blank = broadcast)" size="22" />
+    <input id="content" placeholder="message…" size="22" />
+    <button id="send">Publish</button>
+  </div>
+
+  <ul id="log"></ul>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const log = (text, meta) => {
+      const li = document.createElement('li');
+      li.innerHTML = `<div>${text}</div><div class="meta">${meta}</div>`;
+      $('log').prepend(li);
+    };
+
+    fetch('/api/instance').then(r => r.json())
+      .then(d => $('instance').textContent = 'instance: ' + d.instanceId)
+      .catch(() => $('instance').textContent = 'instance: ?');
+
+    let client = null;
+
+    const onMessage = (frame) => {
+      const n = JSON.parse(frame.body);
+      const tag = n.userId ? `direct → ${n.userId}` : 'broadcast';
+      log(`<b>[${n.type}]</b> ${n.content}`, `${tag} · ${n.id.slice(0, 8)} · ${n.createdAt}`);
+    };
+
+    $('connect').onclick = () => {
+      if (client && client.active) { client.deactivate(); return; }
+      const user = $('user').value.trim() || 'anon';
+      client = new StompJs.Client({
+        brokerURL: `ws://${location.host}/ws?user=${encodeURIComponent(user)}`,
+        reconnectDelay: 3000,
+        onConnect: () => {
+          $('status').textContent = 'connected as ' + user;
+          $('status').className = 'on';
+          $('connect').textContent = 'Disconnect';
+          client.subscribe('/topic/notifications', onMessage);
+          client.subscribe('/user/queue/notifications', onMessage);
+        },
+        onWebSocketClose: () => {
+          $('status').textContent = 'disconnected';
+          $('status').className = 'off';
+          $('connect').textContent = 'Connect';
+        },
+      });
+      client.activate();
+    };
+
+    $('send').onclick = async () => {
+      const body = {
+        userId: $('target').value.trim() || null,
+        type: 'DEMO',
+        content: $('content').value.trim() || '(empty)',
+      };
+      await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      $('content').value = '';
+    };
+  </script>
+</body>
+</html>
