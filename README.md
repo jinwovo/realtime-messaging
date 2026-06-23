@@ -107,6 +107,13 @@ docker compose up -d
 open http://localhost:8080
 ```
 
+Or build and run the app as a container:
+
+```bash
+docker build -t realtime-messaging .
+docker run --rm -p 8080:8080 -e REDIS_HOST=host.docker.internal realtime-messaging
+```
+
 ### Prove cross-instance routing (the money demo)
 
 Run two instances:
